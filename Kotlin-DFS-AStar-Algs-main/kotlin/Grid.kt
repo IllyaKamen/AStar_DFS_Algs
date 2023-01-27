@@ -1,7 +1,7 @@
 class Grid(r: Int, c: Int) {
     // Initialize rows x cols
-    val rows = r * 3
-    val cols = c * 3
+    val rows = r
+    val cols = c
 
     // Initialize walls to print the entire maze
     val grid = Array(rows) { Array(cols) { false } }

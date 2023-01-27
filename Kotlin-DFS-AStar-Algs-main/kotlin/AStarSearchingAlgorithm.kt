@@ -1,12 +1,15 @@
 import java.util.*
-import javax.swing.text.html.HTML.Attribute.N
 import kotlin.math.abs
 import kotlin.random.Random
 
-class AStarSearchingAlgorithm(private var startX: Int, private var startY: Int, private var endX: Int, private var endY: Int, private val gridObject: Grid){
+class AStarSearchingAlgorithm(private var startX: Int,
+                              private var startY: Int,
+                              private var endX: Int,
+                              private var endY: Int,
+                              private val gridObject: Grid){
 
-    val startNode = Node(startX, startY)
-    val wayList = mutableListOf(startNode)
+    val bestWay: MutableList<Node> = mutableListOf()
+
 
     // 0-Right, 1-Left, 2-Down, 3-Up
     private val directions: List<List<Int>> = listOf(
@@ -16,83 +19,112 @@ class AStarSearchingAlgorithm(private var startX: Int, private var startY: Int, 
         listOf(-2, 0)
     )
 
-    // Number of rows
     private val M = gridObject.rows
 
-    // Number of columns
     private val N = gridObject.cols
 
     val maze = gridObject.grid
 
+    // values for calculating averages
     var totalStepsCounter = 0
     var deadEndCounter = 0
     var fromEndToStartStepsCounter = 0
+    // create trigger to check dead ends
     var pushTrigger = false
 
     fun aStar() {
-        // Create a Stack
-        val stack = Stack<List<Int>>()
-        // Push start position to the stack
-        stack.push(listOf(startX, startY))
-        // Mark start cell as visited
-        maze[startX][startY] = true
-        // Print Maze
+        val totalForwardCost = search(startX, startY, endX, endY, maze)
+        val newMaze = gridObject.grid
+        val totalBackwardCost = search(endX, endY, startX, startY, newMaze)
+        when {
+            totalForwardCost>totalBackwardCost && totalForwardCost != -1 -> {
+                println("The best way was build from start till end")
+                search(startX, startY, endX, endY, maze)
+            }
+            totalForwardCost == totalBackwardCost && totalForwardCost != -1 -> {
+                println("Best ways are equal")
+            }
+            totalForwardCost<totalBackwardCost && totalForwardCost != -1 -> {
+                println("The best way was build from end till start")
+            }
+            else -> {
+                println("Way wasn't found")
+                return
+            }
+        }
+
+        val outMaze = gridObject.grid
+        for ((index, cor) in bestWay.withIndex()){
+            outMaze[cor.nodeX][cor.nodeY] = true
+        }
         gridObject.printGrid()
-        // Var to check if we get to end point
+        bestWay.clear()
+
+    }
+
+    fun search(startX: Int, startY: Int, endX: Int, endY: Int, maze: Array<Array<Boolean>>): Int{
+
+        var totalCost = 0
+        bestWay.add(Node(startX, startY, 0))
+        val stack = Stack<List<Int>>()
+
+        stack.push(listOf(startX, startY))
+
+        maze[startX][startY] = true
+
+        gridObject.printGrid()
+
         var endPoint = false
 
         // As long as we have an element in the Stack or we don't get to end point
         while (!stack.empty() && !endPoint) {
-            // Get the current element top of the stack
             val cur = stack.peek()
-            // Get a random available direction
+
             val way = getBestWayIndex(cur[0], cur[1])
 
-            // AS long as we have a way and we didn't exceed limit
-            if (way != -1) {
+            if (way != null) {
                 // Get new position
-                val newX = cur[0] + directions[way][0]
-                val newY = cur[1] + directions[way][1]
-                // check if we have the way been built
+                val newX = way.nodeX
+                val newY = way.nodeY
+
                 if (!maze[newX][newY]) {
-                    // Remove the walls between current and new cell
-                    wallRemover(way, newX, newY)
-                    // Mark new cell as visited
+                    wallRemover(way?.direction, newX, newY)
+
                     maze[newX][newY] = true
-                    // Print Maze
+
                     gridObject.printGrid()
-                    // Push next cell to stack
+
                     stack.push(listOf(newX, newY))
-                    // increment step counter
+
                     totalStepsCounter++
                 }
-                // check if we get to end point by this way
                 if (maze[newX][newY] == maze[endX][endY]){
                     endPoint = true
                     println("Got to end point")
-                    // Count steps from end to start
                     while (!stack.empty()) {
                         fromEndToStartStepsCounter++
                         stack.pop()
                     }
+                    return totalCost
                 }
-                // set pushTrigger is true when we are searching
                 pushTrigger = true
+                totalCost += Node(newX, newY, null).fValue
+                bestWay.add(Node(newX, newY, null))
             }
-            // Pop current cell for backtracking
             else {
+                totalCost -= Node(cur[0], cur[1], null).fValue
+                bestWay.remove(Node(cur[0], cur[1], null))
                 stack.pop()
-                // If we are making pop when pushTrigger is true that means that we are in dead end
                 if (pushTrigger) {
                     deadEndCounter++
-                    // set pushTrigger to false as we can make some pops until we can move on
                     pushTrigger = false
                 }
             }
         }
+        return -1
     }
 
-    private fun wallRemover(index: Int, newX: Int, newY: Int) {
+    private fun wallRemover(index: Int?, newX: Int, newY: Int) {
         // 0-Right, 1-Left, 2-Down, 3-Up
         when (index) {
             0 -> {
@@ -111,20 +143,17 @@ class AStarSearchingAlgorithm(private var startX: Int, private var startY: Int, 
     }
 
     // Calculates f(x), h(x), g(x) for a list of all reachable neighbors of given x and y
-    fun getBestWayIndex(x: Int, y: Int): Int{
-        // Get all nodes with calculated values
+    fun getBestWayIndex(x: Int, y: Int): Node?{
         val availableNodes = calcNodesCost(x, y)
-        // Get index of node with lowest f(x) value if nodes exists
-        return if (availableNodes.isNotEmpty()) availableNodes.indexOf(availableNodes.minBy { it.fValue })  else -1
+
+        return if (availableNodes.isNotEmpty()) availableNodes.minBy { it.fValue }  else null
     }
 
     // Calculates f(x), h(x), g(x) for a list of all reachable neighbors of given x and y
     fun calcNodesCost(x: Int, y: Int): List<Node>{
-        // Get available neighbors
         val availableNodes = getAvailableNodes(x, y)
-        // Calc functions for each node in list
         for ((index) in availableNodes.withIndex()){
-            availableNodes[index].gValue = Random.nextInt(1,30)
+            availableNodes[index].gValue = Random.nextInt(1, 10)
             availableNodes[index].hValue = abs(x - availableNodes[index].x) + abs(y - availableNodes[index].y)
             availableNodes[index].fValue = availableNodes[index].gValue + availableNodes[index].hValue
 //            println(availableNodes[index].fValue)
@@ -133,24 +162,19 @@ class AStarSearchingAlgorithm(private var startX: Int, private var startY: Int, 
     }
     // Creates and returns a list of all reachable neighbors of given x and y
     fun getAvailableNodes(x: Int, y: Int): List<Node> {
-        // Available neighbors
         val availableWays: MutableList<Node> = mutableListOf()
-        // Find unvisited neighbors
         for ((index, direction) in directions.withIndex()) {
             val newX = x + direction[0]
             val newY = y + direction[1]
-            val newNode = Node(newX, newY)
             if (inside(newX, newY) && !maze[newX][newY]) {
-                availableWays.add(newNode)
+                availableWays.add(Node(newX, newY, index))
             }
         }
         return availableWays
     }
 
-
-
     private fun inside(x: Int, y: Int): Boolean {
-        if (x <= 1 || x >= M-1 || y <= 1 || y >= N-1) {
+        if (x <= 0 || x >= M-1 || y <= 0 || y >= N-1) {
             return false
         }
         return true

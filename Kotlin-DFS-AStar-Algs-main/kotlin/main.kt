@@ -1,5 +1,5 @@
 import kotlin.random.Random
-
+import kotlin.reflect.typeOf
 
 
 fun main() {
@@ -12,7 +12,7 @@ fun main() {
 //    println( calculator.calculateAverageSavedStates(20))
 
     // Create a grid
-    val grid = Grid(10, 10)
+    val grid = Grid(16, 16)
     // Create DFS Algorithm
 //    val dfsObject = DFS(
 //        ((2..(grid.rows - 1) / 2).random() * 2),
@@ -21,9 +21,10 @@ fun main() {
 //        ((2..(grid.cols - 1) / 2).random() * 2),
 //        grid
 //    )
-
-//    dfsObject.dfsIteration()
-
+//
+//    dfsObject.getWay()
+//    println( calculator.calculateDFS(20))
+//
     val astar = AStarSearchingAlgorithm(
         ((2..(grid.rows - 1) / 2).random() * 2),
         ((2..(grid.cols - 1) / 2).random() * 2),
@@ -32,4 +33,6 @@ fun main() {
         grid
     )
     astar.aStar()
+//
+//    println(calculator.calculateAll(20))
 }

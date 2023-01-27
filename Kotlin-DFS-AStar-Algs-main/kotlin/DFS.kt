@@ -1,14 +1,18 @@
 import java.util.*
 
-class DFS(private var startX: Int, private var startY: Int, private var endX: Int, private var endY: Int, private val gridObject: Grid) {
-    // Number of rows
+class DFS(private var startX: Int,
+          private var startY: Int,
+          private var endX: Int,
+          private var endY: Int,
+          private val gridObject: Grid) {
+
     private val M = gridObject.rows
 
-    // Number of columns
     private val N = gridObject.cols
 
-    // Maze
     private val maze = gridObject.grid
+
+    var wayList: MutableList<Node> = mutableListOf()
 
     // 4 Directions: 0-Right, 1-Left, 2-Down, 3-Up
     private val directions: List<List<Int>> = listOf(
@@ -24,64 +28,64 @@ class DFS(private var startX: Int, private var startY: Int, private var endX: In
 
     var pushTrigger = false
 
-    // Iterative DFS Algorithm
-    fun dfsIteration() {
-        // Create a Stack
-        val stack = Stack<List<Int>>()
-        // Push start position to the stack
-        stack.push(listOf(startX, startY))
-        // Mark start cell as visited
-        maze[startX][startY] = true
-        // Print Maze
-        gridObject.printGrid()
-        // Var to check if we get to end point
-        var endPoint = false
+    fun getWay(){
 
-        // As long as we have an element in the Stack or we don't get to end point
+        val totalForwardCost = dfsIteration(startX, startY)
+
+        val outMaze = gridObject.grid
+        for ((index, cor) in wayList.withIndex()){
+            outMaze[cor.nodeX][cor.nodeY] = true
+        }
+        println("The way from first node to end is:")
+        gridObject.printGrid()
+        wayList.clear()
+    }
+
+    // Iterative DFS Algorithm
+    fun dfsIteration(startX: Int, startY: Int) {
+        wayList.add(Node(startX, startY, 0))
+        val stack = Stack<List<Int>>()
+        stack.push(listOf(startX, startY))
+        var endPoint = false
+        maze[startX][startY] = true
+        gridObject.printGrid()
+
+
         while (!stack.empty() && !endPoint) {
-            // Get the current element top of the stack
             val cur = stack.peek()
-            // Get a random available direction
             val randomWay = getRandomDirection(cur[0], cur[1])
 
-            // AS long as we have a way and we didn't exceed limit
             if (randomWay != -1) {
-                // Get new position
                 val newX = cur[0] + directions[randomWay][0]
                 val newY = cur[1] + directions[randomWay][1]
-                // check if we have the way been built
+
                 if (!maze[newX][newY]) {
-                    // Remove the walls between current and new cell
                     wallRemover(randomWay, newX, newY)
-                    // Mark new cell as visited
                     maze[newX][newY] = true
-                    // Print Maze
                     gridObject.printGrid()
-                    // Push next cell to stack
                     stack.push(listOf(newX, newY))
-                    // increment step counter
+
                     totalStepsCounter++
                 }
-                // check if we get to end point by this way
+
                 if (maze[newX][newY] == maze[endX][endY]){
                     endPoint = true
                     println("Got to end point")
-                    // Count steps from end to start
                     while (!stack.empty()) {
+
                         fromEndToStartStepsCounter++
                         stack.pop()
+
                     }
                 }
-                // set pushTrigger is true when we are searching
+                wayList.add(Node(newX, newY, null))
                 pushTrigger = true
             }
-            // Pop current cell for backtracking
             else {
                 stack.pop()
-                // If we are making pop when pushTrigger is true that means that we are in dead end
+                wayList.removeLast()
                 if (pushTrigger) {
                     deadEndCounter++
-                    // set pushTrigger to false as we can make some pops until we can move on
                     pushTrigger = false
                 }
             }
@@ -113,9 +117,7 @@ class DFS(private var startX: Int, private var startY: Int, private var endX: In
 
     // Creates a list of all reachable neighbors of given x and y, then Shuffles and returns the list
     private fun getShuffledAvailableDirectionsIndices(x: Int, y: Int): List<Int> {
-        // Available neighbors
         val availableWays: MutableList<Int> = mutableListOf()
-        // Find unvisited neighbors
         for ((index, direction) in directions.withIndex()) {
             val newX = x + direction[0]
             val newY = y + direction[1]
@@ -128,13 +130,11 @@ class DFS(private var startX: Int, private var startY: Int, private var endX: In
 
     // Returns a random available index from directions list, -1 otherwise
     private fun getRandomDirection(x: Int, y: Int): Int {
-        // Get all available neighbors that we can reach from the current x and y position
         val availableWays = getShuffledAvailableDirectionsIndices(x, y)
         // Get random direction
         return if (availableWays.isNotEmpty()) availableWays.random() else -1
     }
 
-    // Checks if x and y position is inside the maze
     private fun inside(x: Int, y: Int): Boolean {
         if (x <= 0 || x >= M-1 || y <= 0 || y >= N-1) {
             return false
@@ -142,3 +142,4 @@ class DFS(private var startX: Int, private var startY: Int, private var endX: In
         return true
     }
 }
+
